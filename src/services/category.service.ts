@@ -1,6 +1,6 @@
 import { Category, CategoryDTO, CreateCategoryDTO, UpdateCategoryDTO } from '../models/category.model';
 import { CategoryRepository } from '../repositories/category.repository';
-import CacheService from './cache.service';
+import CacheService, { CACHE_TTL, CACHE_KEYS } from './cache.service';
 
 /**
  * Service for category-related operations
@@ -24,7 +24,7 @@ export class CategoryService {
     const categoryDTOs = categories.map(this.mapToDTO);
     
     // Store in cache
-    await CacheService.set(cacheKey, categoryDTOs, CacheService.CACHE_TTL.CATEGORIES);
+    await CacheService.set(cacheKey, categoryDTOs, CACHE_TTL.CATEGORIES);
     
     return categoryDTOs;
   }
@@ -48,7 +48,7 @@ export class CategoryService {
     const categoryDTOs = categories.map(this.mapToDTO);
     
     // Store in cache
-    await CacheService.set(cacheKey, categoryDTOs, CacheService.CACHE_TTL.CATEGORIES);
+    await CacheService.set(cacheKey, categoryDTOs, CACHE_TTL.CATEGORIES);
     
     return categoryDTOs;
   }
@@ -116,7 +116,7 @@ export class CategoryService {
    * Invalidate all category-related caches
    */
   private static async invalidateCategoriesCache(): Promise<void> {
-    await CacheService.deleteByPattern(`${CacheService.CACHE_KEYS.CATEGORIES}*`);
+    await CacheService.deleteByPattern(`${CACHE_KEYS.CATEGORIES}*`);
   }
 
   /**

@@ -107,6 +107,6 @@ export class CategoryRepository {
   static async delete(id: number): Promise<boolean> {
     const query = 'DELETE FROM categories WHERE id = $1 RETURNING id';
     const result = await pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   }
 }

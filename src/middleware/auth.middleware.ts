@@ -72,6 +72,15 @@ export const authorizeRole = (roles: UserRole[]) => {
 };
 
 /**
+ * Convenience function that combines authentication and authorization
+ * @param roles Array of allowed roles
+ * @returns Middleware function
+ */
+export const authMiddleware = (roles: UserRole[] = ['admin', 'user', 'read-only']) => {
+  return [authenticateToken, authorizeRole(roles)];
+};
+
+/**
  * Middleware to ensure users can only access their own resources
  * Implements requirements:
  * - 6.3: "WHEN 'user' role accesses transaction endpoints THEN the system SHALL filter data to show only their own records"

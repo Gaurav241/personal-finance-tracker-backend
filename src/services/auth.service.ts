@@ -107,7 +107,7 @@ export class AuthService {
     // Sign token with secret and expiration
     return jwt.sign(payload, config.jwtSecret, {
       expiresIn: config.jwtExpiresIn
-    });
+    } as jwt.SignOptions);
   }
 
   /**
