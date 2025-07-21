@@ -13,14 +13,19 @@ export class AuthService {
    * @returns Authentication result with user and token
    */
   async register(userData: CreateUserDTO): Promise<AuthResult> {
-    // Create user using user service
-    const user = await userService.createUser(userData);
-    
-    // Generate tokens for the new user
-    const token = this.generateToken(user);
-    const refreshToken = this.generateRefreshToken(user);
-    
-    return { user, token, refreshToken };
+    try {
+      // Create user using user service
+      const user = await userService.createUser(userData);
+      
+      // Generate tokens for the new user
+      const token = this.generateToken(user);
+      const refreshToken = this.generateRefreshToken(user);
+      
+      return { user, token, refreshToken };
+    } catch (error) {
+      // Re-throw the error from user service
+      throw error;
+    }
   }
 
   /**
@@ -108,6 +113,9 @@ export class AuthService {
         refreshToken: newRefreshToken
       };
     } catch (error) {
+      if (error instanceof Error && error.message === 'User not found') {
+        throw error;
+      }
       throw new Error('Invalid refresh token');
     }
   }
