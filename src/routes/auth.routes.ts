@@ -1,10 +1,91 @@
 import { Router } from 'express';
+import { body } from 'express-validator';
+import { authController } from '../controllers/auth.controller';
+import { authenticateToken } from '../middleware/auth.middleware';
+import { rateLimit } from 'express-rate-limit';
 
 const router = Router();
 
-// TODO: Implement authentication routes
-// POST /api/v1/auth/register
-// POST /api/v1/auth/login
-// POST /api/v1/auth/refresh
+// Rate limiter for authentication endpoints (5 requests per 15 minutes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5, // 5 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many authentication attempts, please try again later' }
+});
+
+/**
+ * @route   POST /api/v1/auth/register
+ * @desc    Register a new user
+ * @access  Public
+ */
+router.post(
+  '/register',
+  authLimiter,
+  [
+    // Validate email
+    body('email')
+      .isEmail()
+      .withMessage('Please provide a valid email')
+      .normalizeEmail(),
+    
+    // Validate password
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters long')
+      .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/)
+      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
+    
+    // Validate first name
+    body('firstName')
+      .notEmpty()
+      .withMessage('First name is required')
+      .trim()
+      .escape(),
+    
+    // Validate last name
+    body('lastName')
+      .notEmpty()
+      .withMessage('Last name is required')
+      .trim()
+      .escape()
+  ],
+  authController.register.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/login
+ * @desc    Login a user
+ * @access  Public
+ */
+router.post(
+  '/login',
+  authLimiter,
+  [
+    // Validate email
+    body('email')
+      .isEmail()
+      .withMessage('Please provide a valid email')
+      .normalizeEmail(),
+    
+    // Validate password
+    body('password')
+      .notEmpty()
+      .withMessage('Password is required')
+  ],
+  authController.login.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/refresh
+ * @desc    Refresh user token
+ * @access  Private
+ */
+router.post(
+  '/refresh',
+  authenticateToken,
+  authController.refreshToken.bind(authController)
+);
 
 export default router;
