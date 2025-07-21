@@ -3,15 +3,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const analytics_controller_1 = require("../controllers/analytics.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
+const rateLimiting_middleware_1 = require("../middleware/rateLimiting.middleware");
+const performance_middleware_1 = require("../middleware/performance.middleware");
 const router = (0, express_1.Router)();
-// All analytics routes require authentication
+// All analytics routes require authentication and have rate limiting
 router.use(auth_middleware_1.authenticateToken);
+router.use(rateLimiting_middleware_1.analyticsLimiter);
 /**
  * @route GET /api/v1/analytics/summary
  * @desc Get analytics summary for the authenticated user
  * @access Private (admin, user, read-only)
  */
-router.get('/summary', (0, auth_middleware_1.authorizeRole)(['admin', 'user', 'read-only']), analytics_controller_1.AnalyticsController.getAnalyticsSummary);
+router.get('/summary', performance_middleware_1.mediumTermCache, (0, auth_middleware_1.authorizeRole)(['admin', 'user', 'read-only']), analytics_controller_1.AnalyticsController.getAnalyticsSummary);
 /**
  * @route GET /api/v1/analytics/trends/monthly
  * @desc Get monthly trends data

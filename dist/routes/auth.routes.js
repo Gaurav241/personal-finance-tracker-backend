@@ -4,22 +4,18 @@ const express_1 = require("express");
 const express_validator_1 = require("express-validator");
 const auth_controller_1 = require("../controllers/auth.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
-const express_rate_limit_1 = require("express-rate-limit");
+const rateLimiting_middleware_1 = require("../middleware/rateLimiting.middleware");
+const performance_middleware_1 = require("../middleware/performance.middleware");
+const validation_middleware_1 = require("../middleware/validation.middleware");
 const router = (0, express_1.Router)();
-// Rate limiter for authentication endpoints (5 requests per 15 minutes)
-const authLimiter = (0, express_rate_limit_1.rateLimit)({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 5, // 5 requests per window
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Too many authentication attempts, please try again later' }
-});
+// Apply no-cache headers to all auth routes
+router.use(performance_middleware_1.noCache);
 /**
  * @route   POST /api/v1/auth/register
  * @desc    Register a new user
  * @access  Public
  */
-router.post('/register', authLimiter, [
+router.post('/register', rateLimiting_middleware_1.authLimiter, [
     // Validate email
     (0, express_validator_1.body)('email')
         .isEmail()
@@ -43,13 +39,13 @@ router.post('/register', authLimiter, [
         .withMessage('Last name is required')
         .trim()
         .escape()
-], auth_controller_1.authController.register.bind(auth_controller_1.authController));
+], validation_middleware_1.validateRequest, auth_controller_1.authController.register.bind(auth_controller_1.authController));
 /**
  * @route   POST /api/v1/auth/login
  * @desc    Login a user
  * @access  Public
  */
-router.post('/login', authLimiter, [
+router.post('/login', rateLimiting_middleware_1.authLimiter, [
     // Validate email
     (0, express_validator_1.body)('email')
         .isEmail()
@@ -59,7 +55,7 @@ router.post('/login', authLimiter, [
     (0, express_validator_1.body)('password')
         .notEmpty()
         .withMessage('Password is required')
-], auth_controller_1.authController.login.bind(auth_controller_1.authController));
+], validation_middleware_1.validateRequest, auth_controller_1.authController.login.bind(auth_controller_1.authController));
 /**
  * @route   POST /api/v1/auth/refresh
  * @desc    Refresh user token

@@ -7,7 +7,6 @@ import {
   authorizeWriteAccess, 
   authorizeAdmin 
 } from '../auth.middleware';
-import config from '../../config/config';
 
 // Mock jwt
 jest.mock('jsonwebtoken');
