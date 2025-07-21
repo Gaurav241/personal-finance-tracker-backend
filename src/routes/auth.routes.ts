@@ -2,18 +2,14 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { authController } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { rateLimit } from 'express-rate-limit';
+import { authLimiter } from '../middleware/rateLimiting.middleware';
+import { noCache } from '../middleware/performance.middleware';
+import { validateRequest } from '../middleware/validation.middleware';
 
 const router = Router();
 
-// Rate limiter for authentication endpoints (5 requests per 15 minutes)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 5, // 5 requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many authentication attempts, please try again later' }
-});
+// Apply no-cache headers to all auth routes
+router.use(noCache);
 
 /**
  * @route   POST /api/v1/auth/register
@@ -51,6 +47,7 @@ router.post(
       .trim()
       .escape()
   ],
+  validateRequest,
   authController.register.bind(authController)
 );
 
@@ -74,6 +71,7 @@ router.post(
       .notEmpty()
       .withMessage('Password is required')
   ],
+  validateRequest,
   authController.login.bind(authController)
 );
 

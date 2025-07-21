@@ -1,18 +1,21 @@
 import { Router } from 'express';
 import { AnalyticsController } from '../controllers/analytics.controller';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware';
+import { analyticsLimiter } from '../middleware/rateLimiting.middleware';
+import { mediumTermCache } from '../middleware/performance.middleware';
 
 const router = Router();
 
-// All analytics routes require authentication
+// All analytics routes require authentication and have rate limiting
 router.use(authenticateToken);
+router.use(analyticsLimiter);
 
 /**
  * @route GET /api/v1/analytics/summary
  * @desc Get analytics summary for the authenticated user
  * @access Private (admin, user, read-only)
  */
-router.get('/summary', authorizeRole(['admin', 'user', 'read-only']), AnalyticsController.getAnalyticsSummary);
+router.get('/summary', mediumTermCache, authorizeRole(['admin', 'user', 'read-only']), AnalyticsController.getAnalyticsSummary);
 
 /**
  * @route GET /api/v1/analytics/trends/monthly
