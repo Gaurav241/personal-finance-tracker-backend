@@ -1,7 +1,15 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { CreateUserDTO, UserLoginDTO } from '../models/user.model';
-import { validationResult } from 'express-validator';
+import { 
+  trackFailedAttempt, 
+  clearFailedAttempts,
+  setSecureSessionCookie,
+  setSecureRefreshCookie,
+  clearAuthCookies,
+  validatePasswordStrength
+} from '../middleware/security.middleware';
+import { AppError } from '../utils/errorHandler';
 
 /**
  * Authentication controller for handling auth-related requests
@@ -14,10 +22,13 @@ export class AuthController {
    */
   async register(req: Request, res: Response): Promise<void> {
     try {
-      // Check for validation errors
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(req.body.password);
+      if (!passwordValidation.isValid) {
+        res.status(400).json({ 
+          message: 'Password does not meet security requirements',
+          errors: passwordValidation.errors 
+        });
         return;
       }
 
@@ -33,17 +44,34 @@ export class AuthController {
       // Register user
       const result = await authService.register(userData);
 
-      // Return user and token
-      res.status(201).json(result);
+      // Set secure cookies for tokens
+      setSecureSessionCookie(res, result.token);
+      if (result.refreshToken) {
+        setSecureRefreshCookie(res, result.refreshToken);
+      }
+
+      // Return user data and CSRF token (exclude sensitive token from response body)
+      res.status(201).json({
+        success: true,
+        user: result.user,
+        csrfToken: res.locals.csrfToken,
+        message: 'User registered successfully'
+      });
     } catch (error: any) {
       // Handle duplicate email error
-      if (error.message.includes('duplicate key')) {
-        res.status(409).json({ message: 'Email already in use' });
+      if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+        res.status(409).json({ 
+          success: false,
+          message: 'Email already in use' 
+        });
         return;
       }
 
       // Handle other errors
-      res.status(500).json({ message: error.message || 'Error registering user' });
+      res.status(500).json({ 
+        success: false,
+        message: error.message || 'Error registering user' 
+      });
     }
   }
 
@@ -54,13 +82,6 @@ export class AuthController {
    */
   async login(req: Request, res: Response): Promise<void> {
     try {
-      // Check for validation errors
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-      }
-
       // Extract login data from request body
       const loginData: UserLoginDTO = {
         email: req.body.email,
@@ -70,17 +91,44 @@ export class AuthController {
       // Login user
       const result = await authService.login(loginData);
 
-      // Return user and token
-      res.status(200).json(result);
+      // Clear failed attempts on successful login
+      if (req.bruteForceIdentifier) {
+        clearFailedAttempts(req.bruteForceIdentifier);
+      }
+
+      // Set secure cookies for tokens
+      setSecureSessionCookie(res, result.token);
+      if (result.refreshToken) {
+        setSecureRefreshCookie(res, result.refreshToken);
+      }
+
+      // Return user data and CSRF token (exclude sensitive token from response body)
+      res.status(200).json({
+        success: true,
+        user: result.user,
+        csrfToken: res.locals.csrfToken,
+        message: 'Login successful'
+      });
     } catch (error: any) {
+      // Track failed login attempt
+      if (req.bruteForceIdentifier) {
+        trackFailedAttempt(req.bruteForceIdentifier);
+      }
+
       // Handle invalid credentials
-      if (error.message === 'Invalid email or password') {
-        res.status(401).json({ message: error.message });
+      if (error.message === 'Invalid email or password' || error.message === 'Invalid credentials') {
+        res.status(401).json({ 
+          success: false,
+          message: 'Invalid email or password' 
+        });
         return;
       }
 
       // Handle other errors
-      res.status(500).json({ message: 'Error logging in' });
+      res.status(500).json({ 
+        success: false,
+        message: 'Error logging in' 
+      });
     }
   }
 
@@ -91,28 +139,74 @@ export class AuthController {
    */
   async refreshToken(req: Request, res: Response): Promise<void> {
     try {
-      // Get user ID from authenticated request
-      const userId = req.user?.id;
-
-      if (!userId) {
-        res.status(401).json({ message: 'Authentication required' });
+      // Get refresh token from cookie
+      const refreshToken = req.cookies?.refreshToken;
+      
+      if (!refreshToken) {
+        res.status(401).json({ 
+          success: false,
+          message: 'Refresh token required' 
+        });
         return;
       }
 
       // Refresh token
-      const token = await authService.refreshToken(userId);
+      const result = await authService.refreshToken(refreshToken);
 
-      // Return new token
-      res.status(200).json({ token });
+      // Set new secure cookies
+      setSecureSessionCookie(res, result.token);
+      if (result.refreshToken) {
+        setSecureRefreshCookie(res, result.refreshToken);
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        user: result.user,
+        csrfToken: res.locals.csrfToken,
+        message: 'Token refreshed successfully'
+      });
     } catch (error: any) {
-      // Handle user not found
-      if (error.message === 'User not found') {
-        res.status(404).json({ message: error.message });
+      // Clear invalid cookies
+      clearAuthCookies(res);
+
+      // Handle user not found or invalid token
+      if (error.message === 'User not found' || error.message === 'Invalid refresh token') {
+        res.status(401).json({ 
+          success: false,
+          message: 'Invalid or expired refresh token' 
+        });
         return;
       }
 
       // Handle other errors
-      res.status(500).json({ message: 'Error refreshing token' });
+      res.status(500).json({ 
+        success: false,
+        message: 'Error refreshing token' 
+      });
+    }
+  }
+
+  /**
+   * Logout user
+   * @param req Express request
+   * @param res Express response
+   */
+  async logout(req: Request, res: Response): Promise<void> {
+    try {
+      // Clear authentication cookies
+      clearAuthCookies(res);
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false,
+        message: 'Error logging out' 
+      });
     }
   }
 }

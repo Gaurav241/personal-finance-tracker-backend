@@ -3,6 +3,7 @@ import { AnalyticsController } from '../controllers/analytics.controller';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware';
 import { analyticsLimiter } from '../middleware/rateLimiting.middleware';
 import { mediumTermCache } from '../middleware/performance.middleware';
+import { validateAnalyticsQuery, validateUserId } from '../middleware/validation.middleware';
 
 const router = Router();
 
@@ -15,21 +16,21 @@ router.use(analyticsLimiter);
  * @desc Get analytics summary for the authenticated user
  * @access Private (admin, user, read-only)
  */
-router.get('/summary', mediumTermCache, authorizeRole(['admin', 'user', 'read-only']), AnalyticsController.getAnalyticsSummary);
+router.get('/summary', mediumTermCache, authorizeRole(['admin', 'user', 'read-only']), validateAnalyticsQuery, AnalyticsController.getAnalyticsSummary);
 
 /**
  * @route GET /api/v1/analytics/trends/monthly
  * @desc Get monthly trends data
  * @access Private (admin, user, read-only)
  */
-router.get('/trends/monthly', authorizeRole(['admin', 'user', 'read-only']), AnalyticsController.getMonthlyTrends);
+router.get('/trends/monthly', authorizeRole(['admin', 'user', 'read-only']), validateAnalyticsQuery, AnalyticsController.getMonthlyTrends);
 
 /**
  * @route GET /api/v1/analytics/trends/category/:categoryId
  * @desc Get category spending trends
  * @access Private (admin, user, read-only)
  */
-router.get('/trends/category/:categoryId', authorizeRole(['admin', 'user', 'read-only']), AnalyticsController.getCategoryTrends);
+router.get('/trends/category/:categoryId', authorizeRole(['admin', 'user', 'read-only']), validateUserId, validateAnalyticsQuery, AnalyticsController.getCategoryTrends);
 
 /**
  * @route GET /api/v1/analytics/breakdown/:type

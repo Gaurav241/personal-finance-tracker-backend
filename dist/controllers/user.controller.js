@@ -114,6 +114,43 @@ class UserController {
         }
     }
     /**
+     * Change user password
+     * @param req Express request
+     * @param res Express response
+     */
+    async changePassword(req, res) {
+        try {
+            const userId = parseInt(req.params.id);
+            const { currentPassword, newPassword } = req.body;
+            // Check if user exists and get full user data with password
+            const existingUser = await db_service_1.default.from('users').where({ id: userId }).first();
+            if (!existingUser) {
+                res.status(404).json({ message: 'User not found' });
+                return;
+            }
+            // Verify current password
+            const isCurrentPasswordValid = await user_service_1.userService.verifyPassword(currentPassword, existingUser.password);
+            if (!isCurrentPasswordValid) {
+                res.status(400).json({ message: 'Current password is incorrect' });
+                return;
+            }
+            // Hash new password
+            const hashedNewPassword = await user_service_1.userService.hashPassword(newPassword);
+            // Update password in database
+            await db_service_1.default.from('users')
+                .where({ id: userId })
+                .update({
+                password: hashedNewPassword,
+                updated_at: new Date()
+            });
+            res.status(200).json({ message: 'Password changed successfully' });
+        }
+        catch (error) {
+            console.error('Error changing password:', error);
+            res.status(500).json({ message: 'Error changing password' });
+        }
+    }
+    /**
      * Delete user
      * @param req Express request
      * @param res Express response

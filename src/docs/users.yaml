@@ -1,0 +1,281 @@
+paths:
+  /api/v1/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users (Admin only)
+      description: |
+        Retrieves a list of all users in the system. 
+        This endpoint is restricted to admin users only.
+        Supports pagination and filtering.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of users per page
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [admin, user, read-only]
+          description: Filter users by role
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search users by name or email
+      responses:
+        '200':
+          description: List of users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+              example:
+                data:
+                  - id: 1
+                    email: "john.doe@example.com"
+                    firstName: "John"
+                    lastName: "Doe"
+                    role: "user"
+                    createdAt: "2024-01-15T10:30:00Z"
+                  - id: 2
+                    email: "admin@example.com"
+                    firstName: "Admin"
+                    lastName: "User"
+                    role: "admin"
+                    createdAt: "2024-01-14T09:15:00Z"
+                pagination:
+                  page: 1
+                  limit: 20
+                  total: 2
+                  totalPages: 1
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: |
+        Retrieves a specific user by their ID. 
+        Admin users can access any user's information.
+        Regular users can only access their own information.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 1
+                email: "john.doe@example.com"
+                firstName: "John"
+                lastName: "Doe"
+                role: "user"
+                createdAt: "2024-01-15T10:30:00Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: |
+        Updates user information. 
+        Admin users can update any user.
+        Regular users can only update their own information.
+        Password updates require a separate endpoint.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email address
+                firstName:
+                  type: string
+                  description: User first name
+                lastName:
+                  type: string
+                  description: User last name
+                role:
+                  type: string
+                  enum: [admin, user, read-only]
+                  description: User role (admin only)
+            example:
+              email: "john.updated@example.com"
+              firstName: "John"
+              lastName: "Updated"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Email already exists"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user (Admin only)
+      description: |
+        Deletes a user account and all associated data.
+        This action is irreversible and restricted to admin users only.
+        All user's transactions and related data will be permanently removed.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: "User deleted successfully"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/users/{id}/password:
+    put:
+      tags:
+        - Users
+      summary: Change user password
+      description: |
+        Changes the password for a user account.
+        Users can only change their own password.
+        Admin users can change any user's password.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                  description: Current password (required for non-admin users)
+                newPassword:
+                  type: string
+                  minLength: 8
+                  description: New password (minimum 8 characters)
+                confirmPassword:
+                  type: string
+                  description: Confirm new password
+              required:
+                - newPassword
+                - confirmPassword
+            example:
+              currentPassword: "oldPassword123"
+              newPassword: "newSecurePassword456"
+              confirmPassword: "newSecurePassword456"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: "Password changed successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'

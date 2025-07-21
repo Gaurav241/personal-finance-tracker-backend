@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import { CategoryController } from '../controllers/category.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { validateRequest } from '../middleware/validation.middleware';
-import { body, param } from 'express-validator';
+import { authenticateToken, authorizeRole } from '../middleware/auth.middleware';
+import { UserRole } from '../models/user.model';
+import { 
+  validateCategoryCreate,
+  validateUserId,
+  handleValidationErrors
+} from '../middleware/validation.middleware';
+import { param } from 'express-validator';
 
 const router = Router();
 
@@ -25,7 +30,7 @@ router.get(
       .isIn(['income', 'expense'])
       .withMessage('Type must be either "income" or "expense"')
   ],
-  validateRequest,
+  handleValidationErrors,
   CategoryController.getCategoriesByType
 );
 
@@ -36,12 +41,7 @@ router.get(
  */
 router.get(
   '/:id',
-  [
-    param('id')
-      .isInt()
-      .withMessage('Category ID must be an integer')
-  ],
-  validateRequest,
+  validateUserId,
   CategoryController.getCategoryById
 );
 
@@ -52,29 +52,9 @@ router.get(
  */
 router.post(
   '/',
-  ...authMiddleware(['admin']),
-  [
-    body('name')
-      .notEmpty()
-      .withMessage('Category name is required')
-      .trim()
-      .isLength({ min: 2, max: 100 })
-      .withMessage('Category name must be between 2 and 100 characters'),
-    body('type')
-      .notEmpty()
-      .withMessage('Category type is required')
-      .isIn(['income', 'expense'])
-      .withMessage('Type must be either "income" or "expense"'),
-    body('color')
-      .optional()
-      .isHexColor()
-      .withMessage('Color must be a valid hex color code'),
-    body('icon')
-      .optional()
-      .isString()
-      .withMessage('Icon must be a string')
-  ],
-  validateRequest,
+  authenticateToken,
+  authorizeRole(['admin'] as UserRole[]),
+  validateCategoryCreate,
   CategoryController.createCategory
 );
 
@@ -85,26 +65,10 @@ router.post(
  */
 router.put(
   '/:id',
-  ...authMiddleware(['admin']),
-  [
-    param('id')
-      .isInt()
-      .withMessage('Category ID must be an integer'),
-    body('name')
-      .optional()
-      .trim()
-      .isLength({ min: 2, max: 100 })
-      .withMessage('Category name must be between 2 and 100 characters'),
-    body('color')
-      .optional()
-      .isHexColor()
-      .withMessage('Color must be a valid hex color code'),
-    body('icon')
-      .optional()
-      .isString()
-      .withMessage('Icon must be a string')
-  ],
-  validateRequest,
+  authenticateToken,
+  authorizeRole(['admin'] as UserRole[]),
+  validateUserId,
+  validateCategoryCreate, // Reuse create validation for updates
   CategoryController.updateCategory
 );
 
@@ -115,13 +79,9 @@ router.put(
  */
 router.delete(
   '/:id',
-  ...authMiddleware(['admin']),
-  [
-    param('id')
-      .isInt()
-      .withMessage('Category ID must be an integer')
-  ],
-  validateRequest,
+  authenticateToken,
+  authorizeRole(['admin'] as UserRole[]),
+  validateUserId,
   CategoryController.deleteCategory
 );
 

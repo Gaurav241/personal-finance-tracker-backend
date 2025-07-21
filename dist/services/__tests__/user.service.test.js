@@ -5,15 +5,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const user_service_1 = require("../user.service");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-// Mock the database
-jest.mock('../../db', () => ({
-    db: {
-        insert: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        first: jest.fn(),
-        returning: jest.fn(),
-    },
-}));
+// Mock the database service
+const mockQueryBuilder = {
+    insert: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    first: jest.fn(),
+    returning: jest.fn(),
+};
+jest.mock('../db.service', () => {
+    const mockKnex = jest.fn(() => mockQueryBuilder);
+    return {
+        __esModule: true,
+        default: mockKnex,
+    };
+});
 // Mock bcrypt
 jest.mock('bcryptjs', () => ({
     genSalt: jest.fn().mockResolvedValue('salt'),
@@ -22,7 +27,6 @@ jest.mock('bcryptjs', () => ({
 }));
 describe('UserService', () => {
     let userService;
-    const db = require('../../db').db;
     beforeEach(() => {
         userService = new user_service_1.UserService();
         jest.clearAllMocks();
@@ -36,7 +40,7 @@ describe('UserService', () => {
                 firstName: 'Test',
                 lastName: 'User',
             };
-            db.returning.mockResolvedValue([{
+            mockQueryBuilder.returning.mockResolvedValue([{
                     id: 1,
                     email: userData.email,
                     first_name: userData.firstName,
@@ -49,7 +53,7 @@ describe('UserService', () => {
             // Assert
             expect(bcryptjs_1.default.genSalt).toHaveBeenCalledWith(10);
             expect(bcryptjs_1.default.hash).toHaveBeenCalledWith(userData.password, 'salt');
-            expect(db.insert).toHaveBeenCalledWith({
+            expect(mockQueryBuilder.insert).toHaveBeenCalledWith({
                 email: userData.email,
                 password: 'hashed_password',
                 first_name: userData.firstName,
@@ -74,7 +78,7 @@ describe('UserService', () => {
                 lastName: 'User',
                 role: 'admin',
             };
-            db.returning.mockResolvedValue([{
+            mockQueryBuilder.returning.mockResolvedValue([{
                     id: 2,
                     email: userData.email,
                     first_name: userData.firstName,
@@ -85,7 +89,7 @@ describe('UserService', () => {
             // Act
             const result = await userService.createUser(userData);
             // Assert
-            expect(db.insert).toHaveBeenCalledWith({
+            expect(mockQueryBuilder.insert).toHaveBeenCalledWith({
                 email: userData.email,
                 password: 'hashed_password',
                 first_name: userData.firstName,
@@ -117,11 +121,11 @@ describe('UserService', () => {
                 created_at: new Date(),
                 updated_at: new Date(),
             };
-            db.first.mockResolvedValue(mockUser);
+            mockQueryBuilder.first.mockResolvedValue(mockUser);
             // Act
             const result = await userService.getUserByEmail('test@example.com');
             // Assert
-            expect(db.where).toHaveBeenCalledWith({ email: 'test@example.com' });
+            expect(mockQueryBuilder.where).toHaveBeenCalledWith({ email: 'test@example.com' });
             expect(result).toEqual({
                 id: 1,
                 email: 'test@example.com',
@@ -135,7 +139,7 @@ describe('UserService', () => {
         });
         it('should return null when user not found', async () => {
             // Arrange
-            db.first.mockResolvedValue(null);
+            mockQueryBuilder.first.mockResolvedValue(null);
             // Act
             const result = await userService.getUserByEmail('nonexistent@example.com');
             // Assert

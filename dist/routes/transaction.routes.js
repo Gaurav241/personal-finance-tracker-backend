@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const transaction_controller_1 = __importDefault(require("../controllers/transaction.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
+const validation_middleware_1 = require("../middleware/validation.middleware");
 const router = (0, express_1.Router)();
 /**
  * Transaction routes with role-based access control
@@ -23,17 +24,17 @@ const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authenticateToken);
 // GET /api/v1/transactions - Get all transactions for the authenticated user
 // All roles can access this endpoint (admin, user, read-only)
-router.get('/', (0, auth_middleware_1.authorizeRole)(['admin', 'user', 'read-only']), transaction_controller_1.default.getUserTransactions);
+router.get('/', (0, auth_middleware_1.authorizeRole)(['admin', 'user', 'read-only']), validation_middleware_1.validateTransactionQuery, transaction_controller_1.default.getUserTransactions);
 // GET /api/v1/transactions/:id - Get a specific transaction by ID
 // All roles can access this endpoint (admin, user, read-only)
-router.get('/:id', (0, auth_middleware_1.authorizeRole)(['admin', 'user', 'read-only']), transaction_controller_1.default.getTransactionById);
+router.get('/:id', (0, auth_middleware_1.authorizeRole)(['admin', 'user', 'read-only']), validation_middleware_1.validateTransactionId, transaction_controller_1.default.getTransactionById);
 // POST /api/v1/transactions - Create a new transaction
 // Only admin and user roles can create transactions
-router.post('/', (0, auth_middleware_1.authorizeRole)(['admin', 'user']), auth_middleware_1.authorizeWriteAccess, transaction_controller_1.default.createTransaction);
+router.post('/', (0, auth_middleware_1.authorizeRole)(['admin', 'user']), auth_middleware_1.authorizeWriteAccess, validation_middleware_1.validateTransactionCreate, transaction_controller_1.default.createTransaction);
 // PUT /api/v1/transactions/:id - Update an existing transaction
 // Only admin and user roles can update transactions
-router.put('/:id', (0, auth_middleware_1.authorizeRole)(['admin', 'user']), auth_middleware_1.authorizeWriteAccess, transaction_controller_1.default.updateTransaction);
+router.put('/:id', (0, auth_middleware_1.authorizeRole)(['admin', 'user']), auth_middleware_1.authorizeWriteAccess, validation_middleware_1.validateTransactionUpdate, transaction_controller_1.default.updateTransaction);
 // DELETE /api/v1/transactions/:id - Delete a transaction
 // Only admin and user roles can delete transactions
-router.delete('/:id', (0, auth_middleware_1.authorizeRole)(['admin', 'user']), auth_middleware_1.authorizeWriteAccess, transaction_controller_1.default.deleteTransaction);
+router.delete('/:id', (0, auth_middleware_1.authorizeRole)(['admin', 'user']), auth_middleware_1.authorizeWriteAccess, validation_middleware_1.validateTransactionId, transaction_controller_1.default.deleteTransaction);
 exports.default = router;

@@ -19,15 +19,23 @@ declare global {
 }
 
 /**
- * Middleware to verify JWT token
+ * Middleware to verify JWT token from cookie or Authorization header
  * Implements requirement 1.3: "WHEN a user accesses protected routes THEN the system SHALL verify JWT token and role permissions"
  */
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  // Try to get token from cookie first, then from Authorization header
+  let token = req.cookies?.sessionToken;
+  
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && authHeader.split(' ')[1];
+  }
 
   if (!token) {
-    return res.status(401).json({ message: 'Authentication required' });
+    return res.status(401).json({ 
+      success: false,
+      message: 'Authentication required' 
+    });
   }
 
   try {
@@ -35,7 +43,12 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     req.user = decoded as Express.Request['user'];
     next();
   } catch (error) {
-    return res.status(403).json({ message: 'Invalid or expired token' });
+    // Clear invalid cookies
+    res.clearCookie('sessionToken');
+    return res.status(403).json({ 
+      success: false,
+      message: 'Invalid or expired token' 
+    });
   }
 };
 

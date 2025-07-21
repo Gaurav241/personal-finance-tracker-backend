@@ -1,10 +1,16 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
 import { authController } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { authLimiter } from '../middleware/rateLimiting.middleware';
 import { noCache } from '../middleware/performance.middleware';
-import { validateRequest } from '../middleware/validation.middleware';
+import { 
+  validateUserRegistration, 
+  validateUserLogin 
+} from '../middleware/validation.middleware';
+import {
+  authRateLimit,
+  authSlowDown,
+  bruteForceProtection
+} from '../middleware/security.middleware';
 
 const router = Router();
 
@@ -18,36 +24,9 @@ router.use(noCache);
  */
 router.post(
   '/register',
-  authLimiter,
-  [
-    // Validate email
-    body('email')
-      .isEmail()
-      .withMessage('Please provide a valid email')
-      .normalizeEmail(),
-    
-    // Validate password
-    body('password')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long')
-      .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/)
-      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
-    
-    // Validate first name
-    body('firstName')
-      .notEmpty()
-      .withMessage('First name is required')
-      .trim()
-      .escape(),
-    
-    // Validate last name
-    body('lastName')
-      .notEmpty()
-      .withMessage('Last name is required')
-      .trim()
-      .escape()
-  ],
-  validateRequest,
+  authRateLimit,
+  authSlowDown,
+  validateUserRegistration,
   authController.register.bind(authController)
 );
 
@@ -58,20 +37,10 @@ router.post(
  */
 router.post(
   '/login',
-  authLimiter,
-  [
-    // Validate email
-    body('email')
-      .isEmail()
-      .withMessage('Please provide a valid email')
-      .normalizeEmail(),
-    
-    // Validate password
-    body('password')
-      .notEmpty()
-      .withMessage('Password is required')
-  ],
-  validateRequest,
+  authRateLimit,
+  authSlowDown,
+  bruteForceProtection,
+  validateUserLogin,
   authController.login.bind(authController)
 );
 
@@ -82,8 +51,18 @@ router.post(
  */
 router.post(
   '/refresh',
-  authenticateToken,
   authController.refreshToken.bind(authController)
+);
+
+/**
+ * @route   POST /api/v1/auth/logout
+ * @desc    Logout user
+ * @access  Private
+ */
+router.post(
+  '/logout',
+  authenticateToken,
+  authController.logout.bind(authController)
 );
 
 export default router;

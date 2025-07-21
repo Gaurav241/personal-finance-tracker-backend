@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { userService } from './user.service';
 import config from '../config/config';
-import { AuthResult, UserDTO, UserLoginDTO, CreateUserDTO } from '../models/user.model';
+import { AuthResult, RefreshResult, UserDTO, UserLoginDTO, CreateUserDTO } from '../models/user.model';
 
 /**
  * Authentication service for handling user authentication and token management
@@ -16,10 +16,11 @@ export class AuthService {
     // Create user using user service
     const user = await userService.createUser(userData);
     
-    // Generate token for the new user
+    // Generate tokens for the new user
     const token = this.generateToken(user);
+    const refreshToken = this.generateRefreshToken(user);
     
-    return { user, token };
+    return { user, token, refreshToken };
   }
 
   /**
@@ -48,47 +49,67 @@ export class AuthService {
       throw new Error('Invalid email or password');
     }
     
-    // Generate token
-    const token = this.generateToken({
+    // Generate tokens
+    const userDTO = {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
       createdAt: user.createdAt
-    });
+    };
     
-    // Return user without password and token
+    const token = this.generateToken(userDTO);
+    const refreshToken = this.generateRefreshToken(userDTO);
+    
+    // Return user without password and tokens
     return {
-      user: {
+      user: userDTO,
+      token,
+      refreshToken
+    };
+  }
+
+  /**
+   * Refresh user token
+   * @param refreshToken Refresh token to verify
+   * @returns New tokens and user data
+   * @throws Error if token is invalid or user not found
+   */
+  async refreshToken(refreshToken: string): Promise<RefreshResult> {
+    try {
+      // Verify refresh token
+      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret || config.jwtSecret) as any;
+      
+      // Get user by ID
+      const user = await userService.getUserById(decoded.id);
+      
+      // Check if user exists
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Generate new tokens
+      const userDTO = {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
         createdAt: user.createdAt
-      },
-      token
-    };
-  }
-
-  /**
-   * Refresh user token
-   * @param userId User ID from existing token
-   * @returns New token
-   * @throws Error if user not found
-   */
-  async refreshToken(userId: number): Promise<string> {
-    // Get user by ID
-    const user = await userService.getUserById(userId);
-    
-    // Check if user exists
-    if (!user) {
-      throw new Error('User not found');
+      };
+      
+      const newToken = this.generateToken(userDTO);
+      const newRefreshToken = this.generateRefreshToken(userDTO);
+      
+      return {
+        user: userDTO,
+        token: newToken,
+        refreshToken: newRefreshToken
+      };
+    } catch (error) {
+      throw new Error('Invalid refresh token');
     }
-    
-    // Generate new token
-    return this.generateToken(user);
   }
 
   /**
@@ -107,6 +128,26 @@ export class AuthService {
     // Sign token with secret and expiration
     return jwt.sign(payload, config.jwtSecret, {
       expiresIn: config.jwtExpiresIn
+    } as jwt.SignOptions);
+  }
+
+  /**
+   * Generate refresh token for user
+   * @param user User data to include in token
+   * @returns Refresh token
+   */
+  private generateRefreshToken(user: UserDTO): string {
+    // Create payload with user data
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      type: 'refresh'
+    };
+    
+    // Sign token with secret and longer expiration
+    return jwt.sign(payload, config.jwtRefreshSecret || config.jwtSecret, {
+      expiresIn: '7d' // 7 days for refresh token
     } as jwt.SignOptions);
   }
 

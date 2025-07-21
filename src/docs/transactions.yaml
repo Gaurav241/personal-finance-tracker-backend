@@ -1,0 +1,345 @@
+paths:
+  /api/v1/transactions:
+    get:
+      tags:
+        - Transactions
+      summary: Get user transactions
+      description: |
+        Retrieves transactions for the authenticated user with filtering, searching, and pagination.
+        Users can only access their own transactions, while admins can access all transactions.
+        Supports various filtering options and sorting.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of transactions per page
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Filter transactions from this date (YYYY-MM-DD)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Filter transactions until this date (YYYY-MM-DD)
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [income, expense]
+          description: Filter by transaction type
+        - in: query
+          name: categoryId
+          schema:
+            type: integer
+          description: Filter by category ID
+        - in: query
+          name: minAmount
+          schema:
+            type: number
+            format: decimal
+            minimum: 0
+          description: Minimum transaction amount
+        - in: query
+          name: maxAmount
+          schema:
+            type: number
+            format: decimal
+            minimum: 0
+          description: Maximum transaction amount
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search in transaction descriptions
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [transactionDate, amount, createdAt, description]
+            default: transactionDate
+          description: Field to sort by
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order
+      responses:
+        '200':
+          description: Transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Transaction'
+              example:
+                data:
+                  - id: 1
+                    userId: 1
+                    categoryId: 2
+                    amount: 50.00
+                    description: "Grocery shopping"
+                    transactionDate: "2024-01-15"
+                    type: "expense"
+                    category:
+                      id: 2
+                      name: "Groceries"
+                      type: "expense"
+                      color: "#FF6B6B"
+                      icon: "shopping-cart"
+                    createdAt: "2024-01-15T14:30:00Z"
+                  - id: 2
+                    userId: 1
+                    categoryId: 1
+                    amount: 2500.00
+                    description: "Monthly salary"
+                    transactionDate: "2024-01-01"
+                    type: "income"
+                    category:
+                      id: 1
+                      name: "Salary"
+                      type: "income"
+                      color: "#4ECDC4"
+                      icon: "dollar-sign"
+                    createdAt: "2024-01-01T09:00:00Z"
+                pagination:
+                  page: 1
+                  limit: 20
+                  total: 2
+                  totalPages: 1
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Transactions
+      summary: Create new transaction
+      description: |
+        Creates a new transaction for the authenticated user.
+        Only users with 'admin' or 'user' roles can create transactions.
+        Read-only users cannot create transactions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransaction'
+            examples:
+              expense_transaction:
+                summary: Expense transaction
+                value:
+                  categoryId: 2
+                  amount: 75.50
+                  description: "Dinner at restaurant"
+                  transactionDate: "2024-01-15"
+                  type: "expense"
+              income_transaction:
+                summary: Income transaction
+                value:
+                  categoryId: 1
+                  amount: 500.00
+                  description: "Freelance project payment"
+                  transactionDate: "2024-01-15"
+                  type: "income"
+              uncategorized_transaction:
+                summary: Uncategorized transaction
+                value:
+                  categoryId: null
+                  amount: 25.00
+                  description: "Miscellaneous expense"
+                  transactionDate: "2024-01-15"
+                  type: "expense"
+      responses:
+        '201':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+              example:
+                id: 3
+                userId: 1
+                categoryId: 2
+                amount: 75.50
+                description: "Dinner at restaurant"
+                transactionDate: "2024-01-15"
+                type: "expense"
+                category:
+                  id: 2
+                  name: "Dining"
+                  type: "expense"
+                  color: "#FF6B6B"
+                  icon: "utensils"
+                createdAt: "2024-01-15T19:30:00Z"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Category not found"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/transactions/{id}:
+    get:
+      tags:
+        - Transactions
+      summary: Get transaction by ID
+      description: |
+        Retrieves a specific transaction by its ID.
+        Users can only access their own transactions.
+        Admin users can access any transaction.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Transaction ID
+      responses:
+        '200':
+          description: Transaction retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+              example:
+                id: 1
+                userId: 1
+                categoryId: 2
+                amount: 50.00
+                description: "Grocery shopping"
+                transactionDate: "2024-01-15"
+                type: "expense"
+                category:
+                  id: 2
+                  name: "Groceries"
+                  type: "expense"
+                  color: "#FF6B6B"
+                  icon: "shopping-cart"
+                createdAt: "2024-01-15T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Transactions
+      summary: Update transaction
+      description: |
+        Updates an existing transaction.
+        Users can only update their own transactions.
+        Only users with 'admin' or 'user' roles can update transactions.
+        Cache is automatically invalidated after updates.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Transaction ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTransaction'
+            example:
+              categoryId: 3
+              amount: 85.00
+              description: "Updated grocery shopping"
+              transactionDate: "2024-01-16"
+              type: "expense"
+      responses:
+        '200':
+          description: Transaction updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Transactions
+      summary: Delete transaction
+      description: |
+        Deletes a transaction permanently.
+        Users can only delete their own transactions.
+        Only users with 'admin' or 'user' roles can delete transactions.
+        Analytics cache is automatically invalidated after deletion.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Transaction ID
+      responses:
+        '200':
+          description: Transaction deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: "Transaction deleted successfully"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'

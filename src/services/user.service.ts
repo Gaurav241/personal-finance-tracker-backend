@@ -32,6 +32,16 @@ export class UserService {
   }
 
   /**
+   * Hash a password
+   * @param password Plain text password
+   * @returns Hashed password
+   */
+  async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10);
+    return bcrypt.hash(password, salt);
+  }
+
+  /**
    * Verify user password
    * @param plainPassword Plain text password
    * @param hashedPassword Hashed password from database

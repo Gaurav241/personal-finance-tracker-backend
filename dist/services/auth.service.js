@@ -19,9 +19,10 @@ class AuthService {
     async register(userData) {
         // Create user using user service
         const user = await user_service_1.userService.createUser(userData);
-        // Generate token for the new user
+        // Generate tokens for the new user
         const token = this.generateToken(user);
-        return { user, token };
+        const refreshToken = this.generateRefreshToken(user);
+        return { user, token, refreshToken };
     }
     /**
      * Login a user
@@ -42,43 +43,60 @@ class AuthService {
         if (!isPasswordValid) {
             throw new Error('Invalid email or password');
         }
-        // Generate token
-        const token = this.generateToken({
+        // Generate tokens
+        const userDTO = {
             id: user.id,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role,
             createdAt: user.createdAt
-        });
-        // Return user without password and token
+        };
+        const token = this.generateToken(userDTO);
+        const refreshToken = this.generateRefreshToken(userDTO);
+        // Return user without password and tokens
         return {
-            user: {
+            user: userDTO,
+            token,
+            refreshToken
+        };
+    }
+    /**
+     * Refresh user token
+     * @param refreshToken Refresh token to verify
+     * @returns New tokens and user data
+     * @throws Error if token is invalid or user not found
+     */
+    async refreshToken(refreshToken) {
+        try {
+            // Verify refresh token
+            const decoded = jsonwebtoken_1.default.verify(refreshToken, config_1.default.jwtRefreshSecret || config_1.default.jwtSecret);
+            // Get user by ID
+            const user = await user_service_1.userService.getUserById(decoded.id);
+            // Check if user exists
+            if (!user) {
+                throw new Error('User not found');
+            }
+            // Generate new tokens
+            const userDTO = {
                 id: user.id,
                 email: user.email,
                 firstName: user.firstName,
                 lastName: user.lastName,
                 role: user.role,
                 createdAt: user.createdAt
-            },
-            token
-        };
-    }
-    /**
-     * Refresh user token
-     * @param userId User ID from existing token
-     * @returns New token
-     * @throws Error if user not found
-     */
-    async refreshToken(userId) {
-        // Get user by ID
-        const user = await user_service_1.userService.getUserById(userId);
-        // Check if user exists
-        if (!user) {
-            throw new Error('User not found');
+            };
+            const newToken = this.generateToken(userDTO);
+            const newRefreshToken = this.generateRefreshToken(userDTO);
+            return {
+                user: userDTO,
+                token: newToken,
+                refreshToken: newRefreshToken
+            };
         }
-        // Generate new token
-        return this.generateToken(user);
+        catch (error) {
+            throw new Error('Invalid refresh token');
+        }
     }
     /**
      * Generate JWT token for user
@@ -95,6 +113,24 @@ class AuthService {
         // Sign token with secret and expiration
         return jsonwebtoken_1.default.sign(payload, config_1.default.jwtSecret, {
             expiresIn: config_1.default.jwtExpiresIn
+        });
+    }
+    /**
+     * Generate refresh token for user
+     * @param user User data to include in token
+     * @returns Refresh token
+     */
+    generateRefreshToken(user) {
+        // Create payload with user data
+        const payload = {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            type: 'refresh'
+        };
+        // Sign token with secret and longer expiration
+        return jsonwebtoken_1.default.sign(payload, config_1.default.jwtRefreshSecret || config_1.default.jwtSecret, {
+            expiresIn: '7d' // 7 days for refresh token
         });
     }
     /**

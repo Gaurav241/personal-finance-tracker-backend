@@ -7,6 +7,7 @@ interface Config {
   nodeEnv: string;
   port: number;
   jwtSecret: string;
+  jwtRefreshSecret: string;
   jwtExpiresIn: string;
   dbConfig: {
     host: string;
@@ -32,6 +33,7 @@ const config: Config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5000', 10),
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your-refresh-secret-key',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
   dbConfig: {
     host: process.env.DB_HOST || 'localhost',

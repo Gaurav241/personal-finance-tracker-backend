@@ -33,6 +33,15 @@ class UserService {
         return this.mapToUserDTO(user);
     }
     /**
+     * Hash a password
+     * @param password Plain text password
+     * @returns Hashed password
+     */
+    async hashPassword(password) {
+        const salt = await bcryptjs_1.default.genSalt(10);
+        return bcryptjs_1.default.hash(password, salt);
+    }
+    /**
      * Verify user password
      * @param plainPassword Plain text password
      * @param hashedPassword Hashed password from database

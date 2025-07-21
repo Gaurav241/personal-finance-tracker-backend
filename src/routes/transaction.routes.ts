@@ -6,6 +6,12 @@ import {
   authorizeWriteAccess 
 } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
+import {
+  validateTransactionCreate,
+  validateTransactionUpdate,
+  validateTransactionId,
+  validateTransactionQuery
+} from '../middleware/validation.middleware';
 
 const router = Router();
 
@@ -30,6 +36,7 @@ router.use(authenticateToken);
 router.get(
   '/',
   authorizeRole(['admin', 'user', 'read-only'] as UserRole[]),
+  validateTransactionQuery,
   TransactionController.getUserTransactions
 );
 
@@ -38,6 +45,7 @@ router.get(
 router.get(
   '/:id',
   authorizeRole(['admin', 'user', 'read-only'] as UserRole[]),
+  validateTransactionId,
   TransactionController.getTransactionById
 );
 
@@ -47,6 +55,7 @@ router.post(
   '/',
   authorizeRole(['admin', 'user'] as UserRole[]),
   authorizeWriteAccess,
+  validateTransactionCreate,
   TransactionController.createTransaction
 );
 
@@ -56,6 +65,7 @@ router.put(
   '/:id',
   authorizeRole(['admin', 'user'] as UserRole[]),
   authorizeWriteAccess,
+  validateTransactionUpdate,
   TransactionController.updateTransaction
 );
 
@@ -65,6 +75,7 @@ router.delete(
   '/:id',
   authorizeRole(['admin', 'user'] as UserRole[]),
   authorizeWriteAccess,
+  validateTransactionId,
   TransactionController.deleteTransaction
 );
 

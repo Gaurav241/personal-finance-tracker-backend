@@ -15,14 +15,7 @@ export const generalLimiter = rateLimit({
     retryAfter: '15 minutes'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
-      error: 'Too many requests',
-      message: 'Rate limit exceeded. Please try again later.',
-      retryAfter: Math.round(req.rateLimit.resetTime! / 1000)
-    });
-  }
+  legacyHeaders: false
 });
 
 // Strict rate limiter for authentication endpoints
@@ -35,14 +28,7 @@ export const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
-      error: 'Too many authentication attempts',
-      message: 'Too many failed login attempts. Please try again later.',
-      retryAfter: Math.round(req.rateLimit.resetTime! / 1000)
-    });
-  }
+  skipSuccessfulRequests: true // Don't count successful requests
 });
 
 // Moderate rate limiter for transaction endpoints
@@ -54,14 +40,7 @@ export const transactionLimiter = rateLimit({
     retryAfter: '1 minute'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
-      error: 'Too many transaction requests',
-      message: 'Rate limit exceeded for transaction operations. Please try again later.',
-      retryAfter: Math.round(req.rateLimit.resetTime! / 1000)
-    });
-  }
+  legacyHeaders: false
 });
 
 // Lenient rate limiter for analytics endpoints (read-heavy)
@@ -73,14 +52,7 @@ export const analyticsLimiter = rateLimit({
     retryAfter: '1 minute'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
-      error: 'Too many analytics requests',
-      message: 'Rate limit exceeded for analytics operations. Please try again later.',
-      retryAfter: Math.round(req.rateLimit.resetTime! / 1000)
-    });
-  }
+  legacyHeaders: false
 });
 
 // Very strict rate limiter for admin operations
@@ -92,12 +64,5 @@ export const adminLimiter = rateLimit({
     retryAfter: '5 minutes'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
-      error: 'Too many admin requests',
-      message: 'Rate limit exceeded for admin operations. Please try again later.',
-      retryAfter: Math.round(req.rateLimit.resetTime! / 1000)
-    });
-  }
+  legacyHeaders: false
 });

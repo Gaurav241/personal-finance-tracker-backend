@@ -54,4 +54,14 @@ export interface UserLoginDTO {
 export interface AuthResult {
   user: UserDTO;
   token: string;
+  refreshToken?: string;
+}
+
+/**
+ * Token refresh result
+ */
+export interface RefreshResult {
+  user: UserDTO;
+  token: string;
+  refreshToken?: string;
 }

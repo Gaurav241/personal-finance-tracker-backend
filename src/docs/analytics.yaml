@@ -1,0 +1,454 @@
+paths:
+  /api/v1/analytics/summary:
+    get:
+      tags:
+        - Analytics
+      summary: Get analytics summary
+      description: |
+        Retrieves comprehensive financial analytics summary for the authenticated user.
+        Includes total income, expenses, net income, and transaction counts.
+        Data is cached for 15 minutes for optimal performance.
+        Rate limited to 50 requests per hour per user.
+      parameters:
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Start date for analytics period (YYYY-MM-DD)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: End date for analytics period (YYYY-MM-DD)
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [week, month, quarter, year, all]
+            default: month
+          description: Predefined period for analytics
+      responses:
+        '200':
+          description: Analytics summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsSummary'
+              example:
+                totalIncome: 5000.00
+                totalExpenses: 3250.75
+                netIncome: 1749.25
+                transactionCount: 45
+                averageTransaction: 183.37
+                period:
+                  startDate: "2024-01-01"
+                  endDate: "2024-01-31"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/analytics/trends/monthly:
+    get:
+      tags:
+        - Analytics
+      summary: Get monthly trends
+      description: |
+        Retrieves monthly financial trends showing income, expenses, and net income over time.
+        Useful for generating line charts and trend analysis.
+        Rate limited to 50 requests per hour per user.
+      parameters:
+        - in: query
+          name: months
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 12
+          description: Number of months to include in trends
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Start date for trends analysis
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: End date for trends analysis
+      responses:
+        '200':
+          description: Monthly trends retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonthlyTrend'
+              example:
+                - month: "2024-01"
+                  income: 5000.00
+                  expenses: 3250.75
+                  net: 1749.25
+                - month: "2024-02"
+                  income: 5200.00
+                  expenses: 3100.50
+                  net: 2099.50
+                - month: "2024-03"
+                  income: 4800.00
+                  expenses: 3400.25
+                  net: 1399.75
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/analytics/trends/category/{categoryId}:
+    get:
+      tags:
+        - Analytics
+      summary: Get category spending trends
+      description: |
+        Retrieves spending trends for a specific category over time.
+        Shows how spending in a particular category changes month by month.
+        Rate limited to 50 requests per hour per user.
+      parameters:
+        - in: path
+          name: categoryId
+          required: true
+          schema:
+            type: integer
+          description: Category ID to analyze
+        - in: query
+          name: months
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 12
+          description: Number of months to include in trends
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Start date for trends analysis
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: End date for trends analysis
+      responses:
+        '200':
+          description: Category trends retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  category:
+                    $ref: '#/components/schemas/Category'
+                  trends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        month:
+                          type: string
+                          description: Month in YYYY-MM format
+                        amount:
+                          type: number
+                          format: decimal
+                          description: Total amount for the category in this month
+                        transactionCount:
+                          type: integer
+                          description: Number of transactions in this category for the month
+              example:
+                category:
+                  id: 2
+                  name: "Groceries"
+                  type: "expense"
+                  color: "#FF6B6B"
+                  icon: "shopping-cart"
+                trends:
+                  - month: "2024-01"
+                    amount: 450.75
+                    transactionCount: 12
+                  - month: "2024-02"
+                    amount: 520.30
+                    transactionCount: 15
+                  - month: "2024-03"
+                    amount: 380.90
+                    transactionCount: 10
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/analytics/breakdown/{type}:
+    get:
+      tags:
+        - Analytics
+      summary: Get category breakdown
+      description: |
+        Retrieves category-wise breakdown of income or expenses.
+        Shows spending distribution across different categories with percentages.
+        Perfect for generating pie charts and category analysis.
+        Rate limited to 50 requests per hour per user.
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [income, expense]
+          description: Type of breakdown (income or expense)
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Start date for breakdown analysis
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: End date for breakdown analysis
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [week, month, quarter, year, all]
+            default: month
+          description: Predefined period for breakdown
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          description: Maximum number of categories to return
+      responses:
+        '200':
+          description: Category breakdown retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryBreakdown'
+              example:
+                - categoryId: 2
+                  categoryName: "Groceries"
+                  amount: 1250.75
+                  percentage: 35.2
+                  transactionCount: 25
+                - categoryId: 3
+                  categoryName: "Transportation"
+                  amount: 850.50
+                  percentage: 23.9
+                  transactionCount: 18
+                - categoryId: 4
+                  categoryName: "Entertainment"
+                  amount: 650.25
+                  percentage: 18.3
+                  transactionCount: 12
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/analytics/budget:
+    get:
+      tags:
+        - Analytics
+      summary: Get budget comparison
+      description: |
+        Retrieves budget vs actual spending comparison.
+        Shows how actual spending compares to set budgets by category.
+        Rate limited to 50 requests per hour per user.
+      parameters:
+        - in: query
+          name: month
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+          description: Month for budget comparison (YYYY-MM format)
+        - in: query
+          name: year
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2030
+          description: Year for budget comparison
+      responses:
+        '200':
+          description: Budget comparison retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                    description: Period for the budget comparison
+                  totalBudget:
+                    type: number
+                    format: decimal
+                    description: Total budgeted amount
+                  totalSpent:
+                    type: number
+                    format: decimal
+                    description: Total amount spent
+                  budgetUtilization:
+                    type: number
+                    format: decimal
+                    description: Percentage of budget used
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        categoryId:
+                          type: integer
+                        categoryName:
+                          type: string
+                        budgetAmount:
+                          type: number
+                          format: decimal
+                        actualAmount:
+                          type: number
+                          format: decimal
+                        variance:
+                          type: number
+                          format: decimal
+                        utilizationPercentage:
+                          type: number
+                          format: decimal
+              example:
+                period: "2024-01"
+                totalBudget: 3000.00
+                totalSpent: 3250.75
+                budgetUtilization: 108.4
+                categories:
+                  - categoryId: 2
+                    categoryName: "Groceries"
+                    budgetAmount: 500.00
+                    actualAmount: 450.75
+                    variance: -49.25
+                    utilizationPercentage: 90.2
+                  - categoryId: 3
+                    categoryName: "Transportation"
+                    budgetAmount: 300.00
+                    actualAmount: 350.50
+                    variance: 50.50
+                    utilizationPercentage: 116.8
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/analytics/insights:
+    get:
+      tags:
+        - Analytics
+      summary: Get financial insights
+      description: |
+        Retrieves AI-powered financial insights and recommendations based on spending patterns.
+        Provides personalized advice for better financial management.
+        Rate limited to 50 requests per hour per user.
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [month, quarter, year]
+            default: month
+          description: Period for generating insights
+      responses:
+        '200':
+          description: Financial insights retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [spending_pattern, budget_alert, saving_opportunity, trend_analysis]
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        severity:
+                          type: string
+                          enum: [info, warning, critical]
+                        actionable:
+                          type: boolean
+                        recommendation:
+                          type: string
+                  summary:
+                    type: object
+                    properties:
+                      totalInsights:
+                        type: integer
+                      criticalAlerts:
+                        type: integer
+                      savingOpportunities:
+                        type: integer
+              example:
+                insights:
+                  - type: "spending_pattern"
+                    title: "Increased Dining Expenses"
+                    description: "Your dining expenses have increased by 25% compared to last month"
+                    severity: "warning"
+                    actionable: true
+                    recommendation: "Consider meal planning to reduce dining out expenses"
+                  - type: "saving_opportunity"
+                    title: "Subscription Optimization"
+                    description: "You have multiple streaming subscriptions that could be consolidated"
+                    severity: "info"
+                    actionable: true
+                    recommendation: "Review and cancel unused subscriptions to save $30/month"
+                summary:
+                  totalInsights: 5
+                  criticalAlerts: 1
+                  savingOpportunities: 2
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'

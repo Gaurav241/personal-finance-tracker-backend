@@ -90,14 +90,62 @@ const responseTime = (req, res, next) => {
     next();
 };
 exports.responseTime = responseTime;
-// Security headers middleware
+// Enhanced security headers middleware
 const securityHeaders = (req, res, next) => {
+    // Content Security Policy
+    const csp = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Allow inline scripts for development
+        "style-src 'self' 'unsafe-inline'", // Allow inline styles
+        "img-src 'self' data: https:",
+        "font-src 'self' https:",
+        "connect-src 'self'",
+        "media-src 'self'",
+        "object-src 'none'",
+        "child-src 'none'",
+        "worker-src 'self'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "manifest-src 'self'"
+    ].join('; ');
     res.set({
+        // Prevent MIME type sniffing
         'X-Content-Type-Options': 'nosniff',
+        // Prevent clickjacking
         'X-Frame-Options': 'DENY',
+        // Enable XSS protection
         'X-XSS-Protection': '1; mode=block',
+        // Control referrer information
         'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+        // Content Security Policy
+        'Content-Security-Policy': csp,
+        // Permissions Policy (formerly Feature Policy)
+        'Permissions-Policy': [
+            'geolocation=()',
+            'microphone=()',
+            'camera=()',
+            'payment=()',
+            'usb=()',
+            'magnetometer=()',
+            'gyroscope=()',
+            'speaker=()',
+            'vibrate=()',
+            'fullscreen=(self)',
+            'sync-xhr=()'
+        ].join(', '),
+        // Strict Transport Security (HTTPS only)
+        ...(process.env.NODE_ENV === 'production' && {
+            'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+        }),
+        // Prevent DNS prefetching
+        'X-DNS-Prefetch-Control': 'off',
+        // Disable powered by header
+        'X-Powered-By': '',
+        // Cross-Origin policies
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Resource-Policy': 'same-origin'
     });
     next();
 };

@@ -1,0 +1,181 @@
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: |
+        Creates a new user account with the provided information. 
+        New users are assigned the 'user' role by default unless specified otherwise.
+        Rate limited to 5 requests per 15 minutes per IP address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+            examples:
+              user_registration:
+                summary: Standard user registration
+                value:
+                  email: "john.doe@example.com"
+                  password: "securePassword123"
+                  firstName: "John"
+                  lastName: "Doe"
+              admin_registration:
+                summary: Admin user registration
+                value:
+                  email: "admin@example.com"
+                  password: "adminPassword123"
+                  firstName: "Admin"
+                  lastName: "User"
+                  role: "admin"
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                user:
+                  id: 1
+                  email: "john.doe@example.com"
+                  firstName: "John"
+                  lastName: "Doe"
+                  role: "user"
+                  createdAt: "2024-01-15T10:30:00Z"
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Email already exists"
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: |
+        Authenticates a user with email and password, returning a JWT token for subsequent requests.
+        Rate limited to 5 requests per 15 minutes per IP address.
+        Includes brute force protection.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "john.doe@example.com"
+              password: "securePassword123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                user:
+                  id: 1
+                  email: "john.doe@example.com"
+                  firstName: "John"
+                  lastName: "Doe"
+                  role: "user"
+                  createdAt: "2024-01-15T10:30:00Z"
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid email or password"
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh authentication token
+      description: |
+        Refreshes the JWT token using a valid refresh token.
+        This endpoint helps maintain user sessions without requiring re-login.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  description: Valid refresh token
+              required:
+                - refreshToken
+            example:
+              refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid or expired refresh token"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: |
+        Logs out the authenticated user by invalidating their current session.
+        Requires a valid JWT token.
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: "Logout successful"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/ServerError'
