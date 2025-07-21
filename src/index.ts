@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { rateLimit } from 'express-rate-limit';
 import pool from './db';
 import knexInstance from './services/db.service';
+import './services/redis.service'; // Initialize Redis connection
 
 // Load environment variables
 dotenv.config();

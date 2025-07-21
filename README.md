@@ -4,6 +4,7 @@
 
 ### Prerequisites
 - PostgreSQL installed and running
+- Redis installed and running
 - Node.js and npm installed
 
 ### Setup Instructions
@@ -18,13 +19,17 @@ createdb finance_tracker
 cp .env.example .env
 ```
 
-3. Update the `.env` file with your PostgreSQL credentials:
+3. Update the `.env` file with your PostgreSQL and Redis credentials:
 ```
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=finance_tracker
 DB_USER=your_postgres_user
 DB_PASSWORD=your_postgres_password
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password_if_any
 ```
 
 4. Install dependencies:
@@ -91,3 +96,32 @@ npm run dev
 - type: Transaction type (income, expense)
 - created_at: Timestamp of creation
 - updated_at: Timestamp of last update
+## Re
+dis Caching
+
+The application uses Redis for caching to improve performance. The following data types are cached:
+
+- **Analytics Data**: Cached for 15 minutes
+- **Category Data**: Cached for 1 hour
+- **User Data**: Cached for 30 minutes
+- **Transaction Lists**: Cached for 5 minutes
+
+### Cache Invalidation
+
+Cache is automatically invalidated when related data is updated:
+
+- When a transaction is created, updated, or deleted, all analytics cache for that user is invalidated
+- When categories are updated, the categories cache is invalidated
+
+### Cache Keys
+
+The cache service uses the following key patterns:
+
+- Analytics: `analytics:{userId}:{period}`
+- Categories: `categories` or `categories:{userId}`
+- Transactions: `transactions:{userId}:{filters}`
+- User: `user:{userId}`
+
+### Example Usage
+
+See `src/examples/cache-usage.example.ts` for examples of how to use the cache service in controllers.
