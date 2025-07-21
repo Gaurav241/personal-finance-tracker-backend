@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { db } from '../db';
+import knex from './db.service';
 import { User, UserDTO, CreateUserDTO } from '../models/user.model';
 
 /**
@@ -17,7 +17,7 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(userData.password, salt);
 
     // Insert user with hashed password
-    const [user] = await db('users')
+    const [user] = await knex('users')
       .insert({
         email: userData.email,
         password: hashedPassword,
@@ -47,7 +47,7 @@ export class UserService {
    * @returns User with password for authentication
    */
   async getUserByEmail(email: string): Promise<User | null> {
-    const user = await db('users').where({ email }).first();
+    const user = await knex('users').where({ email }).first();
     
     if (!user) {
       return null;
@@ -71,7 +71,7 @@ export class UserService {
    * @returns User without password
    */
   async getUserById(id: number): Promise<UserDTO | null> {
-    const user = await db('users').where({ id }).first();
+    const user = await knex('users').where({ id }).first();
     
     if (!user) {
       return null;
