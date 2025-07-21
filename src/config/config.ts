@@ -14,6 +14,12 @@ interface Config {
     database: string;
     user: string;
     password: string;
+    pool: {
+      min: number;
+      max: number;
+      idleTimeoutMillis: number;
+      connectionTimeoutMillis: number;
+    };
   };
   redisConfig: {
     host: string;
@@ -33,6 +39,12 @@ const config: Config = {
     database: process.env.DB_NAME || 'finance_tracker',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
+    pool: {
+      min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+      max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+      idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT_MS || '30000', 10),
+      connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '2000', 10),
+    },
   },
   redisConfig: {
     host: process.env.REDIS_HOST || 'localhost',

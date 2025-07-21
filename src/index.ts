@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import { rateLimit } from 'express-rate-limit';
+import pool from './db';
+import knexInstance from './services/db.service';
 
 // Load environment variables
 dotenv.config();
@@ -57,6 +59,24 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     message: 'Internal Server Error',
   });
 });
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Error connecting to PostgreSQL database:', err);
+  } else {
+    console.log('PostgreSQL database connected:', res.rows[0]);
+  }
+});
+
+// Test Knex connection
+knexInstance.raw('SELECT 1+1 AS result')
+  .then(() => {
+    console.log('Knex connected to PostgreSQL database');
+  })
+  .catch((err) => {
+    console.error('Error connecting Knex to PostgreSQL database:', err);
+  });
 
 // Start server
 app.listen(PORT, () => {
