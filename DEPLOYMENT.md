@@ -123,7 +123,7 @@ sudo su - finance-app
 
 # Clone repository
 cd /opt/finance-tracker
-git clone https://github.com/your-username/personal-finance-tracker.git .
+git clone https://github.com/Gaurav241/personal-finance-tracker.git .
 
 # Navigate to backend
 cd backend
