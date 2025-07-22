@@ -81,12 +81,18 @@ const responseTime = (req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
-        res.set('X-Response-Time', `${duration}ms`);
         // Log slow requests
         if (duration > 1000) {
             console.warn(`Slow request: ${req.method} ${req.path} took ${duration}ms`);
         }
     });
+    // Set response time header before sending response
+    const originalSend = res.send;
+    res.send = function (body) {
+        const duration = Date.now() - start;
+        res.set('X-Response-Time', `${duration}ms`);
+        return originalSend.call(this, body);
+    };
     next();
 };
 exports.responseTime = responseTime;

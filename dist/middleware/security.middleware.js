@@ -84,9 +84,9 @@ exports.authRateLimit = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
     // Skip successful requests
     skipSuccessfulRequests: true,
-    // Custom key generator to include email in rate limiting
+    // Use default key generator to avoid IPv6 issues
     keyGenerator: (req) => {
-        return req.ip + ':' + (req.body?.email || 'unknown');
+        return req.ip || 'unknown';
     }
 });
 /**
